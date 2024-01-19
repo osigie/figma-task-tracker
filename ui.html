@@ -1,0 +1,237 @@
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/figma-plugin-ds@1.0.1/dist/figma-plugin-ds.min.css"
+/>
+
+<style>
+  input {
+    display: block;
+  }
+  body {
+    padding: 10px;
+  }
+  .heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .title {
+    font-size: medium;
+  }
+  .com-container {
+    display: flex;
+    justify-items: center;
+    justify-content: space-between;
+  }
+  .form-fields {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .add-task-btn {
+    margin: 5px auto;
+  }
+  .taskForm {
+    display: flex;
+    flex-direction: column;
+  }
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .list-container {
+    width: 100%;
+    height: 70%;
+    /* border: 1px solid #7474b1;  */
+    /* border-radius: 5px; */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .completed-tasks {
+    /* align-self: flex-end; */
+  }
+
+  .main {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .control-con {
+    width: 100%;
+    height: 30%;
+  }
+  p {
+    margin: 0;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    list-style: none;
+    padding: 0;
+  }
+
+  li {
+    border: 1px solid rgb(147, 169, 236);
+    padding: 5px;
+    border-radius: 5px;
+  }
+</style>
+
+<div class="main">
+  <div class="control-con">
+    <div class="heading">
+      <h1 class="title">Task Time Tracker</h1>
+      <div class="icon icon--minus"></div>
+    </div>
+
+    <form id="taskForm">
+      <div class="form-fields">
+        <div class="input">
+          <input class="input__field" placeholder="Name" id="taskName" />
+        </div>
+        <div class="input">
+          <input
+            type="number"
+            id="taskDuration"
+            class="input__field"
+            placeholder="Duration (minutes)"
+          />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="button button--primary add-task-btn"
+        onclick="addTask()"
+      >
+        Add Task
+      </button>
+    </form>
+  </div>
+
+  <div class="list-container">
+    <ul id="taskList" class="tasks"></ul>
+    <div>
+      <p id="completedHeading">Completed tasks (0)</p>
+      <ul id="completedTasks" class="tasks completed-tasks"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  let tasks = [];
+  let completedTasks = [];
+  let activeTaskIndex = -1;
+  let intervalId = null;
+
+  function addTask() {
+    const taskName = document.getElementById("taskName");
+    const taskDuration = document.getElementById("taskDuration");
+
+    const taskNameValue = taskName.value;
+    const taskDurationValue = parseInt(taskDuration.value, 10);
+    if (!taskNameValue || isNaN(taskDurationValue) || taskDurationValue <= 0) {
+      alert("Please enter valid task details.");
+      return;
+    }
+
+    const task = {
+      name: taskNameValue,
+      duration: taskDurationValue * 60,
+      active: false,
+    };
+
+    tasks.push(task);
+    taskName.value = "";
+    taskDuration.value = "";
+    renderTasks();
+  }
+
+  function renderTasks() {
+    const taskList = document.getElementById("taskList");
+    taskList.innerHTML = "";
+
+    tasks.forEach((task, index) => {
+      const taskItem = document.createElement("li");
+      taskItem.innerHTML = `
+        <p>${task.name} - ${task.duration} Seconds</p>
+        <div class="action-btn"> 
+        <button onclick="startTask(${index})" ${
+        task.active ? "disabled" : ""
+      } class="button button--secondary">Start</button>
+      <button onclick="pauseTask(${index})" ${
+        !task.active ? "disabled" : ""
+      } class="button button--tertiary">Pause</button>
+      <button onclick="removeTask(${index})" class="button button--tertiary-destructive">Remove</button>
+    </div> `;
+      taskList.appendChild(taskItem);
+    });
+  }
+
+  function renderCompletedTasks() {
+    const completedHeading = document.getElementById("completedHeading");
+    const completedList = document.getElementById("completedTasks");
+    completedList.innerHTML = "";
+    completedHeading.textContent = `Completed tasks (${completedTasks.length})`;
+    completedTasks.forEach((task, index) => {
+      const completedItem = document.createElement("li");
+      completedItem.innerHTML = `
+      <div class="com-container"> 
+         <p >${task.name} 
+           </p> 
+          <div class="icon icon--check"></div>
+           </div>
+      `;
+      completedList.appendChild(completedItem);
+    });
+  }
+
+  function startTask(index) {
+    if (activeTaskIndex !== -1) {
+      alert(
+        "An active task is already running. Finish or pause it before starting a new one."
+      );
+      return;
+    }
+    activeTaskIndex = index;
+    tasks[index].active = true;
+    renderTasks();
+    intervalId = setInterval(() => {
+      tasks[index].duration--;
+      renderTasks();
+      if (tasks[index].duration <= 0) {
+        clearInterval(intervalId);
+        alert(`Task "${tasks[index].name}" completed!`);
+        tasks[index].active = false;
+        activeTaskIndex = -1;
+        completedTasks.push(...tasks.splice(index, 1));
+        renderTasks();
+        renderCompletedTasks();
+      }
+    }, 1000);
+  }
+
+  function removeTask(index) {
+    tasks.splice(index, 1);
+    clearInterval(intervalId);
+    if (activeTaskIndex === index) {
+      activeTaskIndex = -1;
+    } else if (activeTaskIndex > index) {
+      activeTaskIndex--;
+    }
+    renderTasks();
+  }
+
+  function pauseTask(index) {
+    clearInterval(intervalId);
+    activeTaskIndex = -1;
+    tasks[index].active = false;
+    renderTasks();
+  }
+</script>
